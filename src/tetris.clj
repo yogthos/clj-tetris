@@ -11,13 +11,12 @@
 (def *height* 600)
 (def *offset* (atom [0, 0]))
 (def *rotation* (atom nil))
-(def *shapes*  [[[0,0],[0,1],[0,2],[0,3]]   ;I
-                [[0,0],[0,1],[1,1],[1,2]]   ;Z
-                [[1,0],[1,1],[0,1],[0,2]]   ;Z
-                [[1,0],[1,1],[1,2],[0,2]]   ;L
-                [[0,0],[0,1],[1,0],[1,1]]   ;[]
-                [[0,0],[0,1],[0,2],[1,2]]   ;L
-                [[0,1],[1,1],[2,1],[1,0]]]) ;T
+(def *shapes*  [[[0,1],[0,2],[0,3],[0,4]]
+                [[0,0],[0,1],[1,1],[1,2]]
+                [[1,2],[1,1],[0,1],[0,0]]
+                [[0,0],[0,1],[1,0],[1,1]]
+                [[0,0],[0,1],[0,2],[1,2]]
+                [[1,0],[1,1],[1,2],[0,2]]])
 
 (defn get-shape []
   (let [shape (rand-nth *shapes*)
@@ -86,19 +85,13 @@
       rotated)))
 
 (defn clear-lines [board]
-  (loop [lines board, new-lines []]  
-    (let [line (take *cols* lines)] 
-      (if (not-empty line)
-        (recur 
-          (drop *cols* lines)
-          (if (some #{true} line)
-            (into new-lines line)
-            new-lines))
-                
-        (into  
-          (vec (map (fn [_] true) 
-            (range (- (count board) (count new-lines)))))
-          new-lines)))))
+  (let [new-board (apply concat 
+                    (filter #(some #{true} %) 
+                      (partition *cols* board)))]    
+    (into  
+      (vec (map (fn [_] true) 
+             (range (- (count board) (count new-board)))))
+      new-board)))
 
 (defn update-board [board shape]
   (vec (map #(let [[x y] (pos-to-xy %)]
@@ -223,4 +216,4 @@
             (transform board shape drop?)
             new-time)
           )))))
-;(-main)
+(-main)
