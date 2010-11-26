@@ -11,6 +11,7 @@
 (def *height* 600)
 (def *offset* (atom [0, 0]))
 (def *rotation* (atom nil))
+(def *colors* [Color/red, Color/blue, Color/green, Color/yellow])
 (def *shapes*  [[[0,1],[0,2],[0,3],[0,4]]
                 [[0,0],[0,1],[1,1],[1,2]]
                 [[1,2],[1,1],[0,1],[0,0]]
@@ -18,13 +19,14 @@
                 [[0,0],[0,1],[0,2],[1,2]]
                 [[1,0],[1,1],[1,2],[0,2]]])
 
-(defn get-shape []
+(defn get-block []
   (let [shape (rand-nth *shapes*)
         offset (inc (rand-int (- *cols* 3)))]
-    (map (fn [[x y]] [(+ x offset), y]) shape)))
+    {:color (get *colors* (rand-int (count *colors*))) 
+     :shape (map (fn [[x y]] [(+ x offset), y]) shape)}))
 
 (defn get-board []
-  (vec (range (* *rows* *cols*))))
+  (vec (map (fn [_] Color/black) (range (* *rows* *cols*)))))
 
 (defn pos-to-xy [pos]
   (let [x (mod pos *cols*)
@@ -41,7 +43,7 @@
         (not (and 
               (= posx x)
               (= posy y)                        
-              (not (get board (+ pos *cols*))))))))
+              (not= Color/black (get board (+ pos *cols*))))))))
   ([board shape pos]
     (every?
       #{true}
@@ -76,33 +78,37 @@
     (if (collides? board shifted)
       shape shifted)))
 
-(defn transform [board shape drop?]
-  (let [shifted (shift board shape)
+(defn transform [board block drop?]
+  (let [shape (:shape block)
+        shifted (shift board shape)
         rotated (rotate board shifted)]
-    (if drop?
-      (map (fn [[x y]]
-             [x, (if drop? (inc y) y)]) rotated)
-      rotated)))
+    {:color (:color block)
+     :shape (if drop?
+              (map (fn [[x y]]
+                     [x, (if drop? (inc y) y)]) 
+                rotated)
+              rotated)}))
 
 (defn clear-lines [board]
   (let [new-board (apply concat 
-                    (filter #(some #{true} %) 
+                    (filter #(some #{Color/black} %) 
                       (partition *cols* board)))]    
     (into  
-      (vec (map (fn [_] true) 
+      (vec (map (fn [_] Color/black) 
              (range (- (count board) (count new-board)))))
       new-board)))
 
-(defn update-board [board shape]
-  (vec (map #(let [[x y] (pos-to-xy %)]
-               (if (some 
-                     (fn [[px py]] (and(= x px) (= y py)))
-                     shape)
-                 false (get board %)))
-         (range (count board)))))
+(defn update-board [board block]
+  (let [shape (:shape block)] 
+    (vec (map #(let [[x y] (pos-to-xy %)]
+                 (if (some 
+                       (fn [[px py]] (and(= x px) (= y py)))
+                       shape)
+                   (:color block) (get board %)))
+           (range (count board))))))
 
 (defn game-over? [board]
-  (not (reduce #(and %1 %2)
+  (not (reduce  #(and %1 (= Color/black %2))
          (butlast (rest (take *cols* board))))))
 
 ;;;;;;Controls;;;;
@@ -139,13 +145,13 @@
       (. buffer show))
     (.. Toolkit (getDefaultToolkit) (sync))))
 
-(defn draw-square [x y #^Graphics g]
+(defn draw-square [x y color #^Graphics g]
   (let [width  (/ *width* *cols*)
         height (/ *height* *rows*)
         xpos   (* x width)
         ypos   (* y width)]
     (doto g
-      (.setColor Color/RED)
+      (.setColor color)
       (.fillRect xpos, ypos, width, height)
       )))
 
@@ -156,19 +162,18 @@
    (.setColor Color/green)
    (.drawString "GAME OVER" (- (/ *width* 2) 50)  (/ *height* 2))))
 
-(defn draw-board [board shape]
+(defn draw-board [board block]
   (fn [#^Graphics g]
     (doto g
       (.setColor Color/BLACK)
       (.fillRect 0 0 *width* *height*))
     
     (doseq [square (range (count board))]
-      (when (not (get board square))
-       (let [[x y] (pos-to-xy square)]
-         (draw-square x y g))))
+      (let [[x y] (pos-to-xy square)]
+        (draw-square x y (get board square) g)))
     
-    (doseq [[x y] shape]
-      (draw-square x y g))))
+    (doseq [[x y] (:shape block)]
+      (draw-square x y (:color block) g))))
 
 (defn -main [& args]
   (let [frame  (JFrame. "Tetris")
@@ -188,13 +193,13 @@
     
     ;;game loop
     (loop [board    (get-board)
-           shape    (get-shape)
+           block    (get-block)
            old-time (System/currentTimeMillis)]
       
       (reset! *offset* [0,0])
       (reset! *rotation* nil)
       (Thread/sleep 10)
-      (draw canvas (draw-board board shape))
+      (draw canvas (draw-board board block))
       
       (let [cur-time (System/currentTimeMillis)
             new-time (long (if (> (- cur-time old-time) 150)
@@ -205,15 +210,16 @@
           (game-over? board)
           (draw canvas draw-game-over)
           
-          (collides? board shape)
-          (recur (update-board board shape)
-            (get-shape)
+          (collides? board (:shape block))
+          (recur (update-board board block)
+            (get-block)
           new-time)
           
           :default
           (recur 
             (clear-lines board)
-            (transform board shape drop?)
+            (transform board block drop?)
             new-time)
           )))))
-(-main)
+
+;(-main)
