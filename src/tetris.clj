@@ -153,6 +153,8 @@
     (doto g
       (.setColor color)
       (.fillRect xpos, ypos, width, height)
+      (.setColor Color/black)
+      (.drawRect xpos, ypos, width, height)
       )))
 
 (defn draw-game-over [#^Graphics g]
