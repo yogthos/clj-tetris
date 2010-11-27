@@ -11,10 +11,12 @@
 (def *height* 600)
 (def *offset* (atom [0, 0]))
 (def *rotation* (atom nil))
-(def *colors* [Color/red, Color/blue, Color/green, Color/yellow])
+(def *colors* [Color/red, Color/blue, Color/green, Color/yellow, 
+               Color/yellow, Color/orange, Color/magenta])
 (def *shapes*  [[[0,1],[0,2],[0,3],[0,4]]
                 [[0,0],[0,1],[1,1],[1,2]]
                 [[1,2],[1,1],[0,1],[0,0]]
+                [[0,1],[1,1],[1,0],[2,1]]
                 [[0,0],[0,1],[1,0],[1,1]]
                 [[0,0],[0,1],[0,2],[1,2]]
                 [[1,0],[1,1],[1,2],[0,2]]])
@@ -154,8 +156,7 @@
       (.setColor color)
       (.fillRect xpos, ypos, width, height)
       (.setColor Color/black)
-      (.drawRect xpos, ypos, width, height)
-      )))
+      (.drawRect xpos, ypos, width, height))))
 
 (defn draw-game-over [#^Graphics g]
   (doto g
@@ -204,7 +205,7 @@
       (draw canvas (draw-board board block))
       
       (let [cur-time (System/currentTimeMillis)
-            new-time (long (if (> (- cur-time old-time) 150)
+            new-time (long (if (> (- cur-time old-time) 250)
                              cur-time
                              old-time))
             drop?    (> new-time old-time)]
