@@ -1,17 +1,17 @@
 (ns tetris
   (:import
     (javax.swing JFrame)
-    (java.awt Canvas Graphics Color Toolkit)    
+    (java.awt Canvas Font Graphics Color Toolkit)   
     (java.awt.event ActionListener KeyListener KeyEvent))
   (:gen-class))
-
+ 
 (def *cols* 10)
 (def *rows* 20)
 (def *width* 300)
 (def *height* 600)
 (def *offset* (atom [0, 0]))
 (def *rotation* (atom nil))
-(def *colors* [Color/red, Color/blue, Color/green, Color/yellow, 
+(def *colors* [Color/red, Color/blue, Color/green, Color/yellow,
                Color/yellow, Color/orange, Color/magenta])
 (def *shapes*  [[[0,1],[0,2],[0,3],[0,4]]
                 [[0,0],[0,1],[1,1],[1,2]]
@@ -24,57 +24,57 @@
 (defn get-block []
   (let [shape (rand-nth *shapes*)
         offset (inc (rand-int (- *cols* 3)))]
-    {:color (get *colors* (rand-int (count *colors*))) 
+    {:color (get *colors* (rand-int (count *colors*)))
      :shape (map (fn [[x y]] [(+ x offset), y]) shape)}))
 
 (defn get-board []
   (vec (map (fn [_] Color/black) (range (* *rows* *cols*)))))
-
+ 
 (defn pos-to-xy [pos]
   (let [x (mod pos *cols*)
         y (int (/ (- pos x) *cols*))]
     [x, y]))
-
+ 
 (defn collides?
   ([board x y pos]
-    (let [[posx posy] (pos-to-xy pos)]     
-      (and 
-        (> x (- 1)) 
+    (let [[posx posy] (pos-to-xy pos)]    
+      (and
+        (> x (- 1))
         (< x *cols*)
         (< y *rows*)
-        (not (and 
-              (= posx x)
-              (= posy y)                        
-              (not= Color/black (get board (+ pos *cols*))))))))
+        (not (and
+               (= posx x)
+               (= posy y)                       
+               (not= Color/black (get board (+ pos *cols*))))))))
   ([board shape pos]
     (every?
       #{true}
       (for [[x y] shape]
-       (collides? board x y pos))))
+        (collides? board x y pos))))
   ([board shape]
-    (not (reduce 
+    (not (reduce
            #(and %1 (collides? board shape %2))
-          (range (count board)))) ))
+           (range (count board)))) ))
 
 (defn rotate [board shape]
   (if (nil? @*rotation*)
     shape
     (let [[avg-x avg-y] (->> shape
-                          (reduce 
+                          (reduce
                             (fn [[tx ty] [x y]]
                               [(+ tx x), (+ ty y)]))
-                          (map #(int (/ % 4)))) 
+                          (map #(int (/ % 4))))
           
-          rotated (map (fn [[x y]] 
+          rotated (map (fn [[x y]]
                          [(int (+ avg-x (- y avg-y)))
                           (int (- avg-y (- x avg-x)))])
-                    shape)]      
+                    shape)]     
       (if (collides? board rotated)
         shape rotated))))
 
 (defn shift [board shape]
-  (let [shifted (map 
-                  (fn [[x y]] 
+  (let [shifted (map
+                  (fn [[x y]]
                     [(+ x (first @*offset*)), y])
                   shape)]
     (if (collides? board shifted)
@@ -87,23 +87,25 @@
     {:color (:color block)
      :shape (if drop?
               (map (fn [[x y]]
-                     [x, (if drop? (inc y) y)]) 
+                     [x, (if drop? (inc y) y)])
                 rotated)
               rotated)}))
 
 (defn clear-lines [board]
-  (let [new-board (apply concat 
-                    (filter #(some #{Color/black} %) 
-                      (partition *cols* board)))]    
-    (into  
-      (vec (map (fn [_] Color/black) 
-             (range (- (count board) (count new-board)))))
-      new-board)))
+  (let [new-board (apply concat
+                    (filter #(some #{Color/black} %)
+                      (partition *cols* board)))
+        num-removed (- (count board) (count new-board))]   
+    [num-removed
+     (into 
+       (vec (map (fn [_] Color/black)
+              (range num-removed)))
+       new-board)]))
 
 (defn update-board [board block]
-  (let [shape (:shape block)] 
+  (let [shape (:shape block)]
     (vec (map #(let [[x y] (pos-to-xy %)]
-                 (if (some 
+                 (if (some
                        (fn [[px py]] (and(= x px) (= y py)))
                        shape)
                    (:color block) (get board %)))
@@ -158,14 +160,18 @@
       (.setColor Color/black)
       (.drawRect xpos, ypos, width, height))))
 
+(defn draw-text [#^Graphics g color text x y]
+  (doto g
+    (.setColor color)
+    (.drawString text x y)))
+
 (defn draw-game-over [#^Graphics g]
   (doto g
-   (.setColor Color/BLACK)
-   (.fillRect 0 0 *width* *height*)
-   (.setColor Color/green)
-   (.drawString "GAME OVER" (- (/ *width* 2) 50)  (/ *height* 2))))
+    (.setColor Color/black)
+    (.fillRect 0 0 *width* *height*))
+  (draw-text g Color/red "GAME OVER" (- (/ *width* 2) 50) (/ *height* 2)))
 
-(defn draw-board [board block]
+(defn draw-board [board block score]
   (fn [#^Graphics g]
     (doto g
       (.setColor Color/BLACK)
@@ -176,7 +182,9 @@
         (draw-square x y (get board square) g)))
     
     (doseq [[x y] (:shape block)]
-      (draw-square x y (:color block) g))))
+      (draw-square x y (:color block) g))
+    
+    (draw-text g Color/green (str "score: " score) 20 25)))
 
 (defn -main [& args]
   (let [frame  (JFrame. "Tetris")
@@ -192,37 +200,42 @@
       (.createBufferStrategy 2)
       (.addKeyListener (input-listener))
       (.setVisible true)
-    (.requestFocus))
+      (.requestFocus))
     
     ;;game loop
-    (loop [board    (get-board)
+    (loop [score    0
+           board    (get-board)
            block    (get-block)
            old-time (System/currentTimeMillis)]
       
       (reset! *offset* [0,0])
       (reset! *rotation* nil)
       (Thread/sleep 10)
-      (draw canvas (draw-board board block))
+      (draw canvas (draw-board board block score))      
       
       (let [cur-time (System/currentTimeMillis)
             new-time (long (if (> (- cur-time old-time) 250)
                              cur-time
                              old-time))
-            drop?    (> new-time old-time)]
+            drop?    (> new-time old-time)
+            [num-removed, new-board] (clear-lines board)]
         (cond
           (game-over? board)
           (draw canvas draw-game-over)
           
           (collides? board (:shape block))
-          (recur (update-board board block)
+          (recur
+            score
+            (update-board board block)
             (get-block)
-          new-time)
+            new-time)
           
           :default
-          (recur 
-            (clear-lines board)
+          (recur
+            (+ score (* num-removed num-removed))
+            new-board
             (transform board block drop?)
             new-time)
           )))))
 
-;(-main)
+(-main)
