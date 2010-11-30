@@ -165,11 +165,13 @@
     (.setColor color)
     (.drawString text x y)))
 
-(defn draw-game-over [#^Graphics g]
-  (doto g
-    (.setColor Color/black)
-    (.fillRect 0 0 *width* *height*))
-  (draw-text g Color/red "GAME OVER" (- (/ *width* 2) 50) (/ *height* 2)))
+(defn draw-game-over [score]
+  (fn [#^Graphics g] 
+    (doto g
+      (.setColor (new Color (float 0) (float 0) (float 0) (float 0.7)))
+      (.fillRect 0 0 *width* *height*))
+    (draw-text g Color/red "GAME OVER" (- (/ *width* 2) 50) (/ *height* 2))
+    (draw-text g Color/red (str "Final Score: " score) (- (/ *width* 2) 55) (+ 15 (/ *height* 2)))))
 
 (defn draw-board [board block score]
   (fn [#^Graphics g]
@@ -221,7 +223,7 @@
             [num-removed, new-board] (clear-lines board)]
         (cond
           (game-over? board)
-          (draw canvas draw-game-over)
+          (draw canvas (draw-game-over score))
           
           (collides? board (:shape block))
           (recur
@@ -238,4 +240,4 @@
             new-time)
           )))))
 
-(-main)
+;(-main)
