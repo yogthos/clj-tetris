@@ -92,9 +92,10 @@
               rotated)}))
 
 (defn clear-lines [board]
-  (let [new-board (apply concat
-                    (filter #(some #{Color/black} %)
-                      (partition *cols* board)))
+  (let [new-board (->>
+                    (partition *cols* board)
+                    (filter #(some #{Color/black} %))
+                    (apply concat))         
         num-removed (- (count board) (count new-board))]   
     [num-removed
      (into 
