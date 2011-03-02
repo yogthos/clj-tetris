@@ -81,9 +81,9 @@
       shape shifted)))
 
 (defn transform [board block drop?]
-  (let [shape (:shape block)
-        shifted (shift board shape)
-        rotated (rotate board shifted)]
+  (let [rotated (->> (:shape block)
+                  (shift board)  
+                  (rotate board))]
     {:color (:color block)
      :shape (if drop?
               (map (fn [[x y]]
@@ -92,8 +92,8 @@
               rotated)}))
 
 (defn clear-lines [board]
-  (let [new-board (->>
-                    (partition *cols* board)
+  (let [new-board (->> board
+                    (partition *cols*)
                     (filter #(some #{Color/black} %))
                     (apply concat))         
         num-removed (- (count board) (count new-board))]   
