@@ -2,8 +2,7 @@
   (:import
     (javax.swing JFrame)
     (java.awt Canvas Font Graphics Color Toolkit)   
-    (java.awt.event ActionListener KeyListener KeyEvent))
-  (:gen-class))
+    (java.awt.event ActionListener KeyListener KeyEvent)))
  
 (def *cols* 10)
 (def *rows* 20)
