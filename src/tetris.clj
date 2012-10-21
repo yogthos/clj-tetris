@@ -4,47 +4,47 @@
     (java.awt Canvas Font Graphics Color Toolkit)   
     (java.awt.event ActionListener KeyListener KeyEvent)))
  
-(def *cols* 10)
-(def *rows* 20)
-(def *width* 300)
-(def *height* 600)
-(def *offset* (atom [0, 0]))
-(def *rotation* (atom nil))
-(def *colors* [Color/red, Color/blue, Color/green, Color/yellow,
-               Color/yellow, Color/orange, Color/magenta])
-(def *shapes*  [[[0,1],[0,2],[0,3],[0,4]]
-                [[0,0],[0,1],[1,1],[1,2]]
-                [[1,2],[1,1],[0,1],[0,0]]
-                [[0,1],[1,1],[1,0],[2,1]]
-                [[0,0],[0,1],[1,0],[1,1]]
-                [[0,0],[0,1],[0,2],[1,2]]
-                [[1,0],[1,1],[1,2],[0,2]]])
+(def COLS 10)
+(def ROWS 20)
+(def WIDTH 300)
+(def HEIGHT 600)
+(def OFFSET (atom [0 0]))
+(def ROTATION (atom nil))
+(def COLORS [Color/red Color/blue Color/green Color/yellow
+             Color/yellow Color/orange Color/magenta])
+(def SHAPES  [[[0 1] [0 2] [0 3] [0 4]]
+                [[0 0] [0 1] [1 1] [1 2]]
+                [[1 2] [1 1] [0 1] [0 0]]
+                [[0 1] [1 1] [1 0] [2 1]]
+                [[0 0] [0 1] [1 0] [1 1]]
+                [[0 0] [0 1] [0 2] [1 2]]
+                [[1 0] [1 1] [1 2] [0 2]]])
 
 (defn get-block []
-  (let [shape (rand-nth *shapes*)
-        offset (inc (rand-int (- *cols* 3)))]
-    {:color (get *colors* (rand-int (count *colors*)))
-     :shape (map (fn [[x y]] [(+ x offset), y]) shape)}))
+  (let [shape (rand-nth SHAPES)
+        offset (inc (rand-int (- COLS 3)))]
+    {:color (rand-nth COLORS)
+     :shape (map (fn [[x y]] [(+ x offset) y]) shape)}))
 
 (defn get-board []
-  (vec (map (fn [_] Color/black) (range (* *rows* *cols*)))))
- 
+  (vec (take (* ROWS COLS) (repeat Color/black))))
+
 (defn pos-to-xy [pos]
-  (let [x (mod pos *cols*)
-        y (int (/ (- pos x) *cols*))]
+  (let [x (mod pos COLS)
+        y (int (/ (- pos x) COLS))]
     [x, y]))
- 
+
 (defn collides?
   ([board x y pos]
     (let [[posx posy] (pos-to-xy pos)]    
       (and
         (> x (- 1))
-        (< x *cols*)
-        (< y *rows*)
+        (< x COLS)
+        (< y ROWS)
         (not (and
                (= posx x)
                (= posy y)                       
-               (not= Color/black (get board (+ pos *cols*))))))))
+               (not= Color/black (get board (+ pos COLS))))))))
   ([board shape pos]
     (every?
       #{true}
@@ -56,79 +56,72 @@
            (range (count board)))) ))
 
 (defn rotate [board shape]
-  (if (nil? @*rotation*)
+  (if (nil? @ROTATION)
     shape
     (let [[avg-x avg-y] (->> shape
                           (reduce
                             (fn [[tx ty] [x y]]
-                              [(+ tx x), (+ ty y)]))
+                              [(+ tx x) (+ ty y)]))
                           (map #(int (/ % 4))))
           
           rotated (map (fn [[x y]]
                          [(int (+ avg-x (- y avg-y)))
                           (int (- avg-y (- x avg-x)))])
-                    shape)]     
+                       shape)]     
       (if (collides? board rotated)
         shape rotated))))
 
 (defn shift [board shape]
   (let [shifted (map
                   (fn [[x y]]
-                    [(+ x (first @*offset*)), y])
+                    [(+ x (first @OFFSET)) y])
                   shape)]
     (if (collides? board shifted)
       shape shifted)))
 
-(defn transform [board block drop?]
-  (let [rotated (->> (:shape block)
-                  (shift board)  
-                  (rotate board))]
-    {:color (:color block)
+(defn transform [board {:keys [color shape]} drop?]
+  (let [rotated (->> shape (shift board) (rotate board))]
+    {:color color
      :shape (if drop?
-              (map (fn [[x y]]
-                     [x, (if drop? (inc y) y)])
-                rotated)
+              (map (fn [[x y]] [x (if drop? (inc y) y)])
+                   rotated)
               rotated)}))
 
 (defn clear-lines [board]
   (let [new-board (->> board
-                    (partition *cols*)
+                    (partition COLS)
                     (filter #(some #{Color/black} %))
                     (apply concat))         
         num-removed (- (count board) (count new-board))]   
     [num-removed
-     (into 
-       (vec (map (fn [_] Color/black)
-              (range num-removed)))
+     (into (vec (take num-removed (repeat Color/black)))       
        new-board)]))
 
-(defn update-board [board block]
-  (let [shape (:shape block)]
-    (vec (map #(let [[x y] (pos-to-xy %)]
-                 (if (some
-                       (fn [[px py]] (and(= x px) (= y py)))
-                       shape)
-                   (:color block) (get board %)))
-           (range (count board))))))
+(defn update-board [board {:keys [color shape]}]
+  (vec (map #(let [[x y] (pos-to-xy %)]
+               (if (some (fn [[px py]] (and (= x px) (= y py)))
+                     shape)
+                 color (get board %)))
+           (range (count board)))))
 
 (defn game-over? [board]
   (not (reduce  #(and %1 (= Color/black %2))
-         (butlast (rest (take *cols* board))))))
+         (butlast (rest (take COLS board))))))
 
 ;;;;;;Controls;;;;
-(def *dirs* {KeyEvent/VK_LEFT  [-1, 0]
-             KeyEvent/VK_RIGHT [1, 0]
-             KeyEvent/VK_UP :left
-             KeyEvent/VK_DOWN :right})
+(def DIRS {KeyEvent/VK_LEFT  [-1 0]
+           KeyEvent/VK_RIGHT [1 0]
+           KeyEvent/VK_UP :left
+           KeyEvent/VK_DOWN :right})
 
 (defn handle-input [#^KeyEvent event]
   (let [key (.getKeyCode event)]
     (cond
       (or (= key KeyEvent/VK_LEFT) (= key KeyEvent/VK_RIGHT))
-      (let [disp (*dirs* key)]
-        (when disp (swap! *offset* #(map + disp %))))
+      (let [disp (DIRS key)]
+        (when disp (swap! OFFSET #(map + disp %))))
       (or (= key KeyEvent/VK_UP) (= key KeyEvent/VK_DOWN))
-      (reset! *rotation* (*dirs* key)))))
+      (reset! ROTATION (DIRS key)))))
 
 (defn input-listener []
   (proxy [ActionListener KeyListener] []
@@ -150,15 +143,15 @@
     (.. Toolkit (getDefaultToolkit) (sync))))
 
 (defn draw-square [x y color #^Graphics g]
-  (let [width  (/ *width* *cols*)
-        height (/ *height* *rows*)
+  (let [width  (/ WIDTH COLS)
+        height (/ HEIGHT ROWS)
         xpos   (* x width)
         ypos   (* y width)]
     (doto g
       (.setColor color)
-      (.fillRect xpos, ypos, width, height)
+      (.fillRect xpos ypos width height)
       (.setColor Color/black)
-      (.drawRect xpos, ypos, width, height))))
+      (.drawRect xpos ypos width height))))
 
 (defn draw-text [#^Graphics g color text x y]
   (doto g
@@ -169,15 +162,15 @@
   (fn [#^Graphics g] 
     (doto g
       (.setColor (new Color (float 0) (float 0) (float 0) (float 0.7)))
-      (.fillRect 0 0 *width* *height*))
-    (draw-text g Color/red "GAME OVER" (- (/ *width* 2) 50) (/ *height* 2))
-    (draw-text g Color/red (str "Final Score: " score) (- (/ *width* 2) 55) (+ 15 (/ *height* 2)))))
+      (.fillRect 0 0 WIDTH HEIGHT))
+    (draw-text g Color/red "GAME OVER" (- (/ WIDTH 2) 50) (/ HEIGHT 2))
+    (draw-text g Color/red (str "Final Score: " score) (- (/ WIDTH 2) 55) (+ 15 (/ HEIGHT 2)))))
 
 (defn draw-board [board block score]
   (fn [#^Graphics g]
     (doto g
       (.setColor Color/BLACK)
-      (.fillRect 0 0 *width* *height*))
+      (.fillRect 0 0 WIDTH HEIGHT))
     
     (doseq [square (range (count board))]
       (let [[x y] (pos-to-xy square)]
@@ -192,7 +185,7 @@
   (let [frame  (JFrame. "Tetris")
         canvas (Canvas.)]
     (doto frame
-      (.setSize *width* (+ (/ *height* *rows*) *height*))
+      (.setSize WIDTH (+ (/ HEIGHT ROWS) HEIGHT))
       (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
       (.setResizable false)
       (.add canvas)
@@ -210,8 +203,8 @@
            block    (get-block)
            old-time (System/currentTimeMillis)]
       
-      (reset! *offset* [0,0])
-      (reset! *rotation* nil)
+      (reset! OFFSET [0 0])
+      (reset! ROTATION nil)
       (Thread/sleep 10)
       (draw canvas (draw-board board block score))      
       
@@ -220,7 +213,7 @@
                              cur-time
                              old-time))
             drop?    (> new-time old-time)
-            [num-removed, new-board] (clear-lines board)]
+            [num-removed new-board] (clear-lines board)]
         (cond
           (game-over? board)
           (draw canvas (draw-game-over score))
@@ -237,7 +230,6 @@
             (+ score (* num-removed num-removed))
             new-board
             (transform board block drop?)
-            new-time)
-          )))))
+            new-time))))))
 
 ;(-main)
