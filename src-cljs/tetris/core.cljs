@@ -1,5 +1,4 @@
-(ns tetris.core
-  ;use doesn't work as in clojure
+(ns tetris.core  
   (:require [tetris.game :as game]))
 
 (defn log [& items]
