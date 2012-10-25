@@ -109,19 +109,12 @@
          (butlast (rest (take COLS board))))))
 
 ;;;;;;Controls;;;;
-(def DIRS {KeyEvent/VK_LEFT  [-1 0]
-           KeyEvent/VK_RIGHT [1 0]
-           KeyEvent/VK_UP :left
-           KeyEvent/VK_DOWN :right})
-
 (defn handle-input [#^KeyEvent event]
-  (let [key (.getKeyCode event)]
-    (cond
-      (or (= key KeyEvent/VK_LEFT) (= key KeyEvent/VK_RIGHT))
-      (let [disp (DIRS key)]
-        (when disp (swap! OFFSET #(map + disp %))))
-      (or (= key KeyEvent/VK_UP) (= key KeyEvent/VK_DOWN))
-      (reset! ROTATION (DIRS key)))))
+  (condp = (.getKeyCode event)
+    KeyEvent/VK_LEFT  (swap! OFFSET #(map + [-1 0] %))
+    KeyEvent/VK_RIGHT (swap! OFFSET #(map + [1 0] %))
+    KeyEvent/VK_UP (reset! ROTATION :left)
+    KeyEvent/VK_DOWN (reset! ROTATION :right)))
 
 (defn input-listener []
   (proxy [ActionListener KeyListener] []
