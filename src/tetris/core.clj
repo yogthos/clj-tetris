@@ -3,7 +3,8 @@
   (:import
     (javax.swing JFrame)
     (java.awt Canvas Font Graphics Color Toolkit)
-    (java.awt.event ActionListener KeyListener KeyEvent)))
+    (java.awt.event ActionListener KeyListener KeyEvent))
+  (:gen-class))
 
 ;;;;;;Controls;;;;
 (defn handle-input [#^KeyEvent event]

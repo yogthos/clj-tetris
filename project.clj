@@ -1,18 +1,18 @@
-(defproject cljs-tetris "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+(defproject tetris "0.1.0"
+  :description "a simple Tetris game"
+  :url "https://github.com/yogthos/Clojure-Tetris"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  
-  :dependencies [[org.clojure/clojure "1.4.0"]]
-  :plugins [[lein-cljsbuild "0.2.9"]]
-  
-  :source-paths ["src"]
-  ;;cljsbuild does not like cljs files being in the root source folder
-  :cljsbuild {:crossovers [tetris.game]
-              :builds 
-              [{:source-path "src-cljs"
-                :compiler 
+
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojurescript "1.9.542"]]
+  :plugins [[lein-cljsbuild "1.1.6"]]
+
+  :main tetris.core
+
+  :cljsbuild {:builds
+              [{:compiler
                 {:output-to "js/tetris.js"
                  :optimizations :advanced
-                 :pretty-print false}}]})
+                 :pretty-print false}
+                :source-paths ["src"]}]})

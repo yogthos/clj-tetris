@@ -51,23 +51,23 @@
   ([board shape]
     (not (reduce
            #(and %1 (collides? board shape %2))
-           (range (count board)))) ))
+           (range (count board))))))
 
 (defn rotate [board shape]
-  (if (nil? @ROTATION)
-    shape
+  (if @ROTATION
     (let [[avg-x avg-y] (->> shape
                           (reduce
                             (fn [[tx ty] [x y]]
                               [(+ tx x) (+ ty y)]))
                           (map #(int (/ % 4))))
-          
+
           rotated (map (fn [[x y]]
                          [(int (+ avg-x (- y avg-y)))
                           (int (- avg-y (- x avg-x)))])
                        shape)]
       (if (collides? board rotated)
-        shape rotated))))
+        shape rotated))
+    shape))
 
 (defn shift [board shape]
   (let [shifted (map
@@ -81,8 +81,7 @@
   (let [rotated (->> shape (shift board) (rotate board))]
     {:color color
      :shape (if drop?
-              (map (fn [[x y]] [x (if drop? (inc y) y)])
-                   rotated)
+              (map (fn [[x y]] [x (inc y)]) rotated)
               rotated)}))
 
 (defn clear-lines [board]
