@@ -14,5 +14,5 @@
               [{:source-path "src-cljs"
                 :compiler 
                 {:output-to "js/tetris.js"
-                 :optimizations :whitespace
-                 :pretty-print true}}]})
+                 :optimizations :advanced
+                 :pretty-print false}}]})
